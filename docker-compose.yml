@@ -1,0 +1,111 @@
+services:
+  db:
+    image: postgres:15
+    container_name: aoc_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "${DB_PORT}:5432"
+    networks:
+      - aoc_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aoc_backend
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${BACKEND_PORT}
+      SUBMISSIONS_DIR: /app/submissions
+    ports:
+      - "${BACKEND_PORT}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - aoc_network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - submissions_data:/app/submissions
+
+  judge:
+    build:
+      context: ./judge
+      dockerfile: Dockerfile
+    container_name: aoc_judge
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      JUDGE_PORT: ${JUDGE_PORT}
+    ports:
+      - "${JUDGE_PORT}:4000"
+    networks:
+      - aoc_network
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+    volumes:
+      - ./judge:/app
+      - /app/node_modules
+    tmpfs:
+      - /tmp:mode=1777
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aoc_frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+      VITE_JUDGE_URL: ${VITE_JUDGE_URL}
+      CHOKIDAR_USEPOLLING: true
+    ports:
+      - "${FRONTEND_PORT}:80"
+    depends_on:
+      - backend
+      - judge
+    networks:
+      - aoc_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: aoc_nginx
+    ports:
+      - "${NGINX_PORT}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+      - judge
+    networks:
+      - aoc_network
+
+networks:
+  aoc_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  submissions_data:

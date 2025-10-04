@@ -1,0 +1,13 @@
+{
+  "name": "aoc-judge",
+  "version": "1.0.0",
+  "main": "judge.js",
+  "scripts": {
+    "start": "node judge.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "uuid": "^9.0.1"
+  }
+}
