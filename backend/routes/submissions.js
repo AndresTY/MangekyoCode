@@ -18,9 +18,9 @@ async function ensureSubmissionsDir() {
 }
 ensureSubmissionsDir();
 
-async function saveCodeToFile(username, submissionId, code, language) {
+async function saveCodeToFile(userid, challengeId, code, language) {
   try {
-    const userDir = path.join(SUBMISSIONS_DIR, username);
+    const userDir = path.join(SUBMISSIONS_DIR, String(userid));
     await fs.mkdir(userDir, { recursive: true, mode: 0o755 });
 
     const extensions = {
@@ -31,7 +31,7 @@ async function saveCodeToFile(username, submissionId, code, language) {
     };
 
     const ext = extensions[language] || 'txt';
-    const filename = `${submissionId}.${ext}`;
+    const filename = `${challengeId}.${ext}`;
     const filepath = path.join(userDir, filename);
 
     await fs.writeFile(filepath, code, 'utf8');
@@ -77,7 +77,7 @@ router.post('/', authenticate, async (req, res) => {
 
     const submissionId = submissionResult.rows[0].id;
 
-    evaluateSubmission(submissionId, code, language, challenge)
+    evaluateSubmission(userId,submissionId, code, language, challenge,challengeId)
       .catch(err => console.error('Evaluation error:', err));
 
     res.json({
@@ -113,9 +113,9 @@ router.get('/user/me', authenticate, async (req, res) => {
   }
 });
 
-// Evaluar envío
-async function evaluateSubmission(submissionId, code, language, challenge) {
+async function evaluateSubmission(Username,submissionId, code, language, challenge,challengeId) {
   try {
+    saveCodeToFile(Username,challengeId, code, language);
     console.log(`[Submission ${submissionId}] Starting evaluation`);
 
     await db.query(
@@ -196,7 +196,6 @@ async function evaluateSubmission(submissionId, code, language, challenge) {
   }
 }
 
-// Obtener un envío por ID
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;

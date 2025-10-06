@@ -5,8 +5,8 @@
     </div>
 
     <div class="terminal-editor">
-      <div class="line-numbers">
-        <div v-for="n in lineCount" :key="n" class="line-number">{{ n }}</div>
+      <div class="line-numbers" ref="lineNumbers">
+      .
       </div>
 
       <textarea
@@ -14,6 +14,8 @@
         v-model="localCode"
         class="code-textarea"
         spellcheck="false"
+        @input="updateLineCount"
+        @scroll="syncScroll"
         @paste.prevent="handleDisabledAction('Paste')"
         @copy.prevent="handleDisabledAction('Copy')"
         @cut.prevent="handleDisabledAction('Cut')"
@@ -25,7 +27,6 @@
       ></textarea>
     </div>
 
-
     <div class="terminal-status">
       <span>Line: {{ cursorLine }} | Column: {{ cursorColumn }}</span>
       <span>characters: {{ localCode.length }}</span>
@@ -33,7 +34,7 @@
     </div>
 
     <div v-if="showBlockNotification" class="block-notification">
-       {{ blockedAction }} action blocked
+      {{ blockedAction }} action blocked
     </div>
   </div>
 </template>
@@ -56,8 +57,6 @@ const emit = defineEmits(['update:modelValue', 'save'])
 
 const codeArea = ref(null)
 const localCode = ref(props.modelValue)
-const editorMode = ref('nano')
-const vimMode = ref('NORMAL')
 const cursorLine = ref(1)
 const cursorColumn = ref(0)
 const showBlockNotification = ref(false)
@@ -74,7 +73,7 @@ const filename = computed(() => {
 })
 
 const lineCount = computed(() => {
-  return Math.max(localCode.value.split('\n').length, 20)
+  return localCode.value.split('\n').length
 })
 
 onMounted(() => {
@@ -174,11 +173,17 @@ const insertTab = () => {
   })
 }
 
+const syncScroll = () => {
+  const textarea = codeArea.value
+  const lines = document.querySelector('.line-numbers')
+  if (textarea && lines) {
+    lines.scrollTop = textarea.scrollTop
+  }
+}
 
 const saveCode = () => {
   emit('save', localCode.value)
   
-  // Mostrar notificación
   const notification = document.createElement('div')
   notification.textContent = 'Saved code'
   notification.style.cssText = `
@@ -235,48 +240,34 @@ watch(() => props.modelValue, (newValue) => {
   text-shadow: 0 0 5px #00ff00;
 }
 
-.terminal-actions button {
-  background-color: transparent;
-  border: 1px solid #006600;
-  color: #00cc00;
-  padding: 0.25rem 0.75rem;
-  margin-left: 0.5rem;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.terminal-actions button:hover {
-  background-color: #004400;
-}
-
-.terminal-actions button.active {
-  background-color: #00cc00;
-  color: #000000;
-  box-shadow: 0 0 10px #00cc00;
-}
-
 .terminal-editor {
   display: flex;
-  min-height: 450px;
-  max-height: 600px;
+  height: 450px; 
   background-color: #000000;
+  overflow: hidden;
 }
 
 .line-numbers {
   background-color: #001a00;
   color: #006600;
-  padding: 1rem 0.5rem;
+  padding: 0rem;
   text-align: right;
   user-select: none;
   border-right: 1px solid #003300;
-  min-width: 3rem;
-  font-size: 0.9rem;
+  min-width: 1rem;
+  font-size: 1.2rem;
+  overflow-y: auto;
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-
+.line-numbers::-webkit-scrollbar {
+  display: none;
+}
 .line-number {
   line-height: 1.5;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .code-textarea {
@@ -291,6 +282,7 @@ watch(() => props.modelValue, (newValue) => {
   resize: none;
   outline: none;
   overflow-y: auto;
+  height: 100%;
   caret-color: #00ff00;
 }
 
@@ -300,7 +292,7 @@ watch(() => props.modelValue, (newValue) => {
 }
 
 .code-textarea::-webkit-scrollbar {
-  width: 10px;
+  width: 1px;
 }
 
 .code-textarea::-webkit-scrollbar-track {
@@ -310,21 +302,6 @@ watch(() => props.modelValue, (newValue) => {
 .code-textarea::-webkit-scrollbar-thumb {
   background: #00cc00;
   border-radius: 5px;
-}
-
-.terminal-footer {
-  background-color: #001a00;
-  padding: 0.5rem 1rem;
-  border-top: 1px solid #003300;
-  border-bottom: 1px solid #003300;
-}
-
-.nano-commands, .vim-commands {
-  display: flex;
-  gap: 1.5rem;
-  font-size: 0.85rem;
-  color: #00cc00;
-  flex-wrap: wrap;
 }
 
 .terminal-status {
@@ -373,12 +350,7 @@ watch(() => props.modelValue, (newValue) => {
 
 @media (max-width: 768px) {
   .terminal-editor {
-    min-height: 350px;
-  }
-  
-  .nano-commands, .vim-commands {
-    font-size: 0.75rem;
-    gap: 0.75rem;
+    height: 350px;
   }
   
   .terminal-status {

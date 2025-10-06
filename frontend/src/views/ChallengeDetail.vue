@@ -194,7 +194,6 @@ const submitSolution = async () => {
 
     submissionId.value = response.data.submissionId
 
-    // Polling para verificar resultado
     checkSubmissionStatus()
   } catch (err) {
     const errorMsg = err.response?.data?.error || 'Unknown error'
@@ -209,10 +208,8 @@ const checkSubmissionStatus = async () => {
     const submission = response.data
 
     if (submission.status === 'pending' || submission.status === 'running') {
-      // Continuar polling
       setTimeout(checkSubmissionStatus, 2000)
     } else {
-      // Resultado final
       submissionResult.value = submission
       submitting.value = false
     }
